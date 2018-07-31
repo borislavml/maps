@@ -26,7 +26,9 @@ namespace Maps.Pages
 
         public void OnGet()
         {
-
+            var ipAddress = HttpContext.Connection.RemoteIpAddress;
+            var maxmind = GeoIP.MaxMind.MaxMindGeoIP.GetInstance(Path.Combine(_hostingEnvironment.WebRootPath, "GeoLite2-City.mmdb"));
+            var city = maxmind.GetIPInfo("139.162.152.243");
         }
 
         public IActionResult OnGetAirports()
