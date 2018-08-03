@@ -8,27 +8,43 @@ using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.Extensions.Configuration;
 using System.Collections.Generic;
 using System.IO;
+using System.Net;
+
+using GeoIP;
+using GeoIP.MaxMind;
 
 namespace Maps.Pages
 {
     public class IndexModel : PageModel
     {
         private readonly IHostingEnvironment _hostingEnvironment;
-        public IConfiguration Configuration { get; }
-        public string MapboxAccessToken { get; }
 
-        public IndexModel(IConfiguration configuration, IHostingEnvironment hostingEnvironment)
+        public IConfiguration Configuration { get; }
+        public IGeoIP GeoIP { get; set; }
+
+        public string MapboxAccessToken => Configuration["Mapbox:AccessToken"];
+        public IPAddress IP => HttpContext.Connection.RemoteIpAddress;
+
+        public double InitialLatitude { get; set; } = 0;
+        public double InitialLongitude { get; set; } = 0;
+        public int InitialZoom { get; set; } = 1;
+
+        public IndexModel(IConfiguration configuration, IHostingEnvironment hostingEnvironment, IGeoIP geoIp)
         {
-            Configuration = configuration;
-            MapboxAccessToken = Configuration["Mapbox:AccessToken"];
+            Configuration = configuration;            
+            GeoIP = geoIp;
             _hostingEnvironment = hostingEnvironment;
         }
 
         public void OnGet()
         {
-            var ipAddress = HttpContext.Connection.RemoteIpAddress;
-            var maxmind = GeoIP.MaxMind.MaxMindGeoIP.GetInstance(Path.Combine(_hostingEnvironment.WebRootPath, "GeoLite2-City.mmdb"));
-            var city = maxmind.GetIPInfo("139.162.152.243");
+            var city = GeoIP.GetIPInfo(IP);
+            if (city?.Latitude != null && city?.Longitude != null)
+            {
+                InitialLatitude = city.Latitude.Value;
+                InitialLongitude = city.Longitude.Value;
+                InitialZoom = 9;
+            }
         }
 
         public IActionResult OnGetAirports()
@@ -38,7 +54,7 @@ namespace Maps.Pages
                 BadDataFound = context => { }
             };
 
-            using (var sr = new StreamReader(Path.Combine(_hostingEnvironment.WebRootPath, "airports.dat")))
+            using (var sr = new StreamReader(Path.Combine(_hostingEnvironment.WebRootPath, Configuration["Airports:DbFileName"])))
             using (var reader = new CsvReader(sr, configuration))
             {
                 FeatureCollection featureCollection = new FeatureCollection();
@@ -62,5 +78,6 @@ namespace Maps.Pages
                 return new JsonResult(featureCollection);
             }
         }
+
     }
 }

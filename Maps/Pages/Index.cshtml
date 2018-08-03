@@ -26,7 +26,15 @@
 </head>
 <body>
 
-    <div id="map"></div>
+    <div id="map">
+    </div>
+
+    @*SEARCH*@
+    <div class="absolute pin-t pin-r w-1/5 mt-4 mr-4">
+        <input type="search" id="address-input" placeholder="Search..." />
+    </div>
+    @*SEARCH*@
+
     @*INFO CARD*@
     <div id="info-card" class="absolute pin-t pin-l mt-4 ml-4 rounded shadow-lg bg-white" style="max-width: 400px; display: none;">
         <div>
@@ -40,12 +48,16 @@
         </div>
     </div>
     @*INFO CARD*@
+
     <script src="https://api.mapbox.com/mapbox-gl-js/v0.47.0/mapbox-gl.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/places.js@1.4.15"></script>
     <script>
- mapboxgl.accessToken = '@Model.MapboxAccessToken';
+    mapboxgl.accessToken = '@Model.MapboxAccessToken';
     var map = new mapboxgl.Map({
         container: 'map',
-        style: 'mapbox://styles/mapbox/streets-v9'
+        style: 'mapbox://styles/mapbox/streets-v9',
+        center: [@Model.InitialLongitude, @Model.InitialLatitude], // starting position [lng, lat]
+        zoom: @Model.InitialZoom // starting zoom
     });
 
     var nav = new mapboxgl.NavigationControl();
@@ -146,6 +158,18 @@
                 }
             });
             });
+
+        var placesAutocomplete = places({
+            container: document.querySelector('#address-input'),
+            type: 'city'
+        });
+
+        placesAutocomplete.on('change', e => {
+            map.flyTo({
+                center: [e.suggestion.latlng.lng, e.suggestion.latlng.lat],
+                zoom: 12
+            });
+        });
 
         document.querySelector('#info-card-close-button').addEventListener('click', function (event) {
             document.querySelector('#info-card').style.display = 'none';
